@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optimizador de Rutas de Buses - Cantón Milagro</title>
+  <!-- Math.js para optimización de frecuencias -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
+  <!-- Google Maps JavaScript API con callback initMap -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDfLnGqJtentwamLCRgRe_IhHzIQ2h7CEE&callback=initMap" async defer></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; color: #333; }
+    h1, h2 { text-align: center; color: #1d3557; }
+    .container { max-width: 1000px; margin: 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+    select, input[type="number"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 12px; }
+    button { background-color: #1d3557; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+    button:hover { background-color: #457b9d; }
+    #map { width: 100%; height: 400px; margin-top: 20px; }
+    #resultadoRuta, #resultadoFrecuencia { background: #f0f8ff; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 5px solid #1d3557; }
+    #errorRuta { color: red; font-weight: bold; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Optimizador de Rutas de Buses - Cantón Milagro</h1>
+    <label>Origen:
+      <select id="origen">
+        <option value="Centro">Centro</option>
+        <option value="Colegio">Colegio 17 de Septiembre</option>
+        <option value="UNEMI">UNEMI</option>
+        <option value="Terminal">Terminal</option>
+        <option value="MilagroNorte">Milagro Norte</option>
+        <option value="Vergeles">Los Vergeles</option>
+      </select>
+    </label>
+    <label>Destino:
+      <select id="destino">
+        <option value="Centro">Centro</option>
+        <option value="Colegio">Colegio 17 de Septiembre</option>
+        <option value="UNEMI">UNEMI</option>
+        <option value="Terminal">Terminal</option>
+        <option value="MilagroNorte">Milagro Norte</option>
+        <option value="Vergeles">Los Vergeles</option>
+      </select>
+    </label>
+    <button onclick="calcularRuta()">Calcular Ruta</button>
+    <div id="errorRuta"></div>
+    <div id="resultadoRuta"></div>
+    <div id="map"></div>
+  </div>
+
+  <div class="container">
+    <h2>Optimización de Frecuencia de Buses</h2>
+    <p>Ingresa la demanda de pasajeros por tramo (pasajeros/hora):</p>
+    <label>Centro → Colegio 17 de Septiembre:<input type="number" id="dem_ab" value="95" /></label>
+    <label>Colegio 17 de Septiembre → UNEMI:<input type="number" id="dem_bc" value="55" /></label>
+    <label>UNEMI → Terminal Terrestre:<input type="number" id="dem_cd" value="145" /></label>
+    <label>Terminal → Milagro Norte:<input type="number" id="dem_de" value="180" /></label>
+    <label>Milagro Norte → Cdla. Los Vergeles:<input type="number" id="dem_ef" value="160" /></label>
+    <label>Los Vergeles → UNEMI:<input type="number" id="dem_fg" value="220" /></label>
+    <button onclick="optimizarFrecuencia()">Calcular Frecuencias Óptimas</button>
+    <div id="resultadoFrecuencia"></div>
+  </div>
+
+  <script>
+    // Coordenadas reales del cantón Milagro
+    const lugares = {
+      Centro: { lat: -2.133570, lng: -79.593142 },
+      Colegio: { lat: -2.126323, lng: -79.592660 },
+      UNEMI: { lat: -2.147713, lng: -79.608579 },
+      Terminal: { lat: -2.127232, lng: -79.600829 },
+      MilagroNorte: { lat: -2.110505, lng: -79.594660 },
+      Vergeles: { lat: -2.151995, lng: -79.582591 }
+    };
+
+    let map, directionsService, directionsRenderer;
+    let currentMarkers = [];
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: -2.135, lng: -79.600 },
+        zoom: 14
+      });
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: true });
+      directionsRenderer.setMap(map);
+    }
+
+    function clearRoute() {
+      directionsRenderer.set('directions', null);
+    }
+
+    function clearMarkers() {
+      currentMarkers.forEach(m => m.setMap(null));
+      currentMarkers = [];
+    }
+
+    function calcularRuta() {
+      const origen = document.getElementById('origen').value;
+      const destino = document.getElementById('destino').value;
+      const errorDiv = document.getElementById('errorRuta');
+      const resultadoDiv = document.getElementById('resultadoRuta');
+
+      if (origen === destino) {
+        errorDiv.innerText = '⚠️ El origen y el destino no pueden ser iguales.';
+        resultadoDiv.innerHTML = '';
+        return;
+      }
+      errorDiv.innerText = '';
+
+      clearRoute();
+      clearMarkers();
+
+      directionsService.route({
+        origin: new google.maps.LatLng(lugares[origen].lat, lugares[origen].lng),
+        destination: new google.maps.LatLng(lugares[destino].lat, lugares[destino].lng),
+        travelMode: 'DRIVING'
+      }, (response, status) => {
+        if (status === 'OK') {
+          directionsRenderer.setDirections(response);
+          // Marcadores solo al trazar ruta
+          const mo = new google.maps.Marker({ position: lugares[origen], map, label: 'O' });
+          const md = new google.maps.Marker({ position: lugares[destino], map, label: 'D' });
+          currentMarkers.push(mo, md);
+          resultadoDiv.innerHTML = `<p><strong>Ruta:</strong> ${origen} → ${destino}</p>`;
+        } else {
+          errorDiv.innerText = 'No se pudo trazar la ruta: ' + status;
+        }
+      });
+    }
+
+    function optimizarFrecuencia() {
+      if (!window.math || typeof math.lusolve !== 'function') {
+        alert('Error: la librería math.js no está cargada.'); return;
+      }
+      const ids = ['dem_ab','dem_bc','dem_cd','dem_de','dem_ef','dem_fg'];
+      const vals = [];
+      let ok = true;
+      ids.forEach(id => {
+        const c = document.getElementById(id);
+        const v = parseFloat(c.value);
+        if (isNaN(v)||v<0) { c.style.border='2px solid red'; ok=false; }
+        else { c.style.border=''; vals.push(v); }
+      });
+      if (!ok) { alert('Completa todos los campos correctamente.'); return; }
+      const A = [[1,1,0,0,0,0],[0,1,1,0,0,0],[1,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]];
+      let x = math.lusolve(A, vals).map(v=>Math.round(v[0]));
+      let total = x.reduce((s,n)=>s+n,0);
+      if (total>70) { const f=70/total; x=x.map(n=>Math.floor(n*f)); total=x.reduce((s,n)=>s+n,0); }
+      const names = ['Centro → Colegio 17 de Septiembre','Colegio 17 de Septiembre → UNEMI','UNEMI → Terminal Terrestre','Terminal → Milagro Norte','Milagro Norte → Cdla. Los Vergeles','Los Vergeles → UNEMI'];
+      document.getElementById('resultadoFrecuencia').innerHTML = `<h3>Frecuencias óptimas:</h3><ul>`+x.map((n,i)=>`<li><strong>${names[i]}:</strong> ${n} colectivos/hora</li>`).join('')+`</ul><p><strong>Total colectivos asignados:</strong> ${total} / 70 disponibles</p>`;
+    }
+  </script>
+</body>
+</html>
