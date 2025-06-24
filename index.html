@@ -6,8 +6,11 @@
   <title>Optimizador de Rutas de Buses - Cantón Milagro</title>
   <!-- Math.js para optimización de frecuencias -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
-  <!-- Google Maps JavaScript API con callback initMap -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDfLnGqJtentwamLCRgRe_IhHzIQ2h7CEE&callback=initMap" async defer></script>
+  <!-- Google Maps JavaScript API con tu API Key y callback -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDfLnGqJtentwamLCRgRe_IhHzIQ2h7CEE&callback=initMap"
+    defer
+  ></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; color: #333; }
     h1, h2 { text-align: center; color: #1d3557; }
@@ -24,7 +27,8 @@
 <body>
   <div class="container">
     <h1>Optimizador de Rutas de Buses - Cantón Milagro</h1>
-    <label>Origen:
+    <label>
+      Origen:
       <select id="origen">
         <option value="Centro">Centro</option>
         <option value="Colegio">Colegio 17 de Septiembre</option>
@@ -34,7 +38,8 @@
         <option value="Vergeles">Los Vergeles</option>
       </select>
     </label>
-    <label>Destino:
+    <label>
+      Destino:
       <select id="destino">
         <option value="Centro">Centro</option>
         <option value="Colegio">Colegio 17 de Septiembre</option>
@@ -66,16 +71,15 @@
   <script>
     // Coordenadas reales del cantón Milagro
     const lugares = {
-      Centro: { lat: -2.133570, lng: -79.593142 },
-      Colegio: { lat: -2.126323, lng: -79.592660 },
-      UNEMI: { lat: -2.147713, lng: -79.608579 },
-      Terminal: { lat: -2.127232, lng: -79.600829 },
+      Centro:       { lat: -2.133570, lng: -79.593142 },
+      Colegio:      { lat: -2.126323, lng: -79.592660 },
+      UNEMI:        { lat: -2.147713, lng: -79.608579 },
+      Terminal:     { lat: -2.127232, lng: -79.600829 },
       MilagroNorte: { lat: -2.110505, lng: -79.594660 },
-      Vergeles: { lat: -2.151995, lng: -79.582591 }
+      Vergeles:     { lat: -2.151995, lng: -79.582591 }
     };
 
-    let map, directionsService, directionsRenderer;
-    let currentMarkers = [];
+    let map, directionsService, directionsRenderer, markers = [];
 
     function initMap() {
       map = new google.maps.Map(document.getElementById('map'), {
@@ -92,8 +96,8 @@
     }
 
     function clearMarkers() {
-      currentMarkers.forEach(m => m.setMap(null));
-      currentMarkers = [];
+      markers.forEach(m => m.setMap(null));
+      markers = [];
     }
 
     function calcularRuta() {
@@ -108,21 +112,21 @@
         return;
       }
       errorDiv.innerText = '';
-
       clearRoute();
       clearMarkers();
 
       directionsService.route({
-        origin: new google.maps.LatLng(lugares[origen].lat, lugares[origen].lng),
-        destination: new google.maps.LatLng(lugares[destino].lat, lugares[destino].lng),
-        travelMode: 'DRIVING'
+        origin:    new google.maps.LatLng(lugares[origen].lat, lugares[origen].lng),
+        destination:new google.maps.LatLng(lugares[destino].lat, lugares[destino].lng),
+        travelMode:'DRIVING'
       }, (response, status) => {
         if (status === 'OK') {
           directionsRenderer.setDirections(response);
           // Marcadores solo al trazar ruta
-          const mo = new google.maps.Marker({ position: lugares[origen], map, label: 'O' });
-          const md = new google.maps.Marker({ position: lugares[destino], map, label: 'D' });
-          currentMarkers.push(mo, md);
+          markers.push(
+            new google.maps.Marker({ position: lugares[origen], map, label: 'O' }),
+            new google.maps.Marker({ position: lugares[destino], map, label: 'D' })
+          );
           resultadoDiv.innerHTML = `<p><strong>Ruta:</strong> ${origen} → ${destino}</p>`;
         } else {
           errorDiv.innerText = 'No se pudo trazar la ruta: ' + status;
@@ -132,7 +136,8 @@
 
     function optimizarFrecuencia() {
       if (!window.math || typeof math.lusolve !== 'function') {
-        alert('Error: la librería math.js no está cargada.'); return;
+        alert('Error: la librería math.js no está cargada.');
+        return;
       }
       const ids = ['dem_ab','dem_bc','dem_cd','dem_de','dem_ef','dem_fg'];
       const vals = [];
@@ -140,16 +145,45 @@
       ids.forEach(id => {
         const c = document.getElementById(id);
         const v = parseFloat(c.value);
-        if (isNaN(v)||v<0) { c.style.border='2px solid red'; ok=false; }
-        else { c.style.border=''; vals.push(v); }
+        if (isNaN(v) || v < 0) {
+          c.style.border = '2px solid red';
+          ok = false;
+        } else {
+          c.style.border = '';
+          vals.push(v);
+        }
       });
-      if (!ok) { alert('Completa todos los campos correctamente.'); return; }
-      const A = [[1,1,0,0,0,0],[0,1,1,0,0,0],[1,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]];
-      let x = math.lusolve(A, vals).map(v=>Math.round(v[0]));
-      let total = x.reduce((s,n)=>s+n,0);
-      if (total>70) { const f=70/total; x=x.map(n=>Math.floor(n*f)); total=x.reduce((s,n)=>s+n,0); }
-      const names = ['Centro → Colegio 17 de Septiembre','Colegio 17 de Septiembre → UNEMI','UNEMI → Terminal Terrestre','Terminal → Milagro Norte','Milagro Norte → Cdla. Los Vergeles','Los Vergeles → UNEMI'];
-      document.getElementById('resultadoFrecuencia').innerHTML = `<h3>Frecuencias óptimas:</h3><ul>`+x.map((n,i)=>`<li><strong>${names[i]}:</strong> ${n} colectivos/hora</li>`).join('')+`</ul><p><strong>Total colectivos asignados:</strong> ${total} / 70 disponibles</p>`;
+      if (!ok) {
+        alert('Por favor, completa todos los campos correctamente.');
+        return;
+      }
+      const A = [
+        [1,1,0,0,0,0],
+        [0,1,1,0,0,0],
+        [1,0,1,0,0,0],
+        [0,0,0,1,0,0],
+        [0,0,0,0,1,0],
+        [0,0,0,0,0,1]
+      ];
+      let x = math.lusolve(A, vals).map(v => Math.round(v[0]));
+      let total = x.reduce((s,n) => s + n, 0);
+      if (total > 70) {
+        const factor = 70 / total;
+        x = x.map(n => Math.floor(n * factor));
+        total = x.reduce((s,n) => s + n, 0);
+      }
+      const nombres = [
+        'Centro → Colegio 17 de Septiembre',
+        'Colegio 17 de Septiembre → UNEMI',
+        'UNEMI → Terminal Terrestre',
+        'Terminal → Milagro Norte',
+        'Milagro Norte → Cdla. Los Vergeles',
+        'Los Vergeles → UNEMI'
+      ];
+      document.getElementById('resultadoFrecuencia').innerHTML =
+        `<h3>Frecuencias óptimas:</h3><ul>` +
+        x.map((n,i) => `<li><strong>${nombres[i]}:</strong> ${n} colectivos/hora</li>`).join('') +
+        `</ul><p><strong>Total colectivos asignados:</strong> ${total} / 70 disponibles</p>`;
     }
   </script>
 </body>
