@@ -103,6 +103,8 @@
     function calcularRuta() {
       const origen = document.getElementById('origen').value;
       const destino = document.getElementById('destino').value;
+      console.log('▶️ Origen value:', origen, '→ coords:', lugares[origen]);
+      console.log('▶️ Destino value:', destino, '→ coords:', lugares[destino]);
       const errorDiv = document.getElementById('errorRuta');
       const resultadoDiv = document.getElementById('resultadoRuta');
 
@@ -116,13 +118,12 @@
       clearMarkers();
 
       directionsService.route({
-        origin:    new google.maps.LatLng(lugares[origen].lat, lugares[origen].lng),
-        destination:new google.maps.LatLng(lugares[destino].lat, lugares[destino].lng),
-        travelMode:'DRIVING'
+        origin: new google.maps.LatLng(lugares[origen].lat, lugares[origen].lng),
+        destination: new google.maps.LatLng(lugares[destino].lat, lugares[destino].lng),
+        travelMode: 'DRIVING'
       }, (response, status) => {
         if (status === 'OK') {
           directionsRenderer.setDirections(response);
-          // Marcadores solo al trazar ruta
           markers.push(
             new google.maps.Marker({ position: lugares[origen], map, label: 'O' }),
             new google.maps.Marker({ position: lugares[destino], map, label: 'D' })
@@ -136,54 +137,23 @@
 
     function optimizarFrecuencia() {
       if (!window.math || typeof math.lusolve !== 'function') {
-        alert('Error: la librería math.js no está cargada.');
-        return;
+        alert('Error: la librería math.js no está cargada.'); return;
       }
       const ids = ['dem_ab','dem_bc','dem_cd','dem_de','dem_ef','dem_fg'];
-      const vals = [];
-      let ok = true;
+      const vals = []; let ok = true;
       ids.forEach(id => {
         const c = document.getElementById(id);
         const v = parseFloat(c.value);
-        if (isNaN(v) || v < 0) {
-          c.style.border = '2px solid red';
-          ok = false;
-        } else {
-          c.style.border = '';
-          vals.push(v);
-        }
+        if (isNaN(v) || v < 0) { c.style.border = '2px solid red'; ok = false; }
+        else { c.style.border = ''; vals.push(v); }
       });
-      if (!ok) {
-        alert('Por favor, completa todos los campos correctamente.');
-        return;
-      }
-      const A = [
-        [1,1,0,0,0,0],
-        [0,1,1,0,0,0],
-        [1,0,1,0,0,0],
-        [0,0,0,1,0,0],
-        [0,0,0,0,1,0],
-        [0,0,0,0,0,1]
-      ];
+      if (!ok) { alert('Por favor, completa todos los campos correctamente.'); return; }
+      const A = [[1,1,0,0,0,0],[0,1,1,0,0,0],[1,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]];
       let x = math.lusolve(A, vals).map(v => Math.round(v[0]));
       let total = x.reduce((s,n) => s + n, 0);
-      if (total > 70) {
-        const factor = 70 / total;
-        x = x.map(n => Math.floor(n * factor));
-        total = x.reduce((s,n) => s + n, 0);
-      }
-      const nombres = [
-        'Centro → Colegio 17 de Septiembre',
-        'Colegio 17 de Septiembre → UNEMI',
-        'UNEMI → Terminal Terrestre',
-        'Terminal → Milagro Norte',
-        'Milagro Norte → Cdla. Los Vergeles',
-        'Los Vergeles → UNEMI'
-      ];
-      document.getElementById('resultadoFrecuencia').innerHTML =
-        `<h3>Frecuencias óptimas:</h3><ul>` +
-        x.map((n,i) => `<li><strong>${nombres[i]}:</strong> ${n} colectivos/hora</li>`).join('') +
-        `</ul><p><strong>Total colectivos asignados:</strong> ${total} / 70 disponibles</p>`;
+      if (total > 70) { const factor = 70 / total; x = x.map(n => Math.floor(n * factor)); total = x.reduce((s,n) => s + n, 0); }
+      const nombres = ['Centro → Colegio 17 de Septiembre','Colegio 17 de Septiembre → UNEMI','UNEMI → Terminal Terrestre','Terminal → Milagro Norte','Milagro Norte → Cdla. Los Vergeles','Los Vergeles → UNEMI'];
+      document.getElementById('resultadoFrecuencia').innerHTML = `<h3>Frecuencias óptimas:</h3><ul>`+x.map((n,i)=>`<li><strong>${nombres[i]}:</strong> ${n} colectivos/hora</li>`).join('')+`</ul><p><strong>Total colectivos asignados:</strong> ${total} / 70 disponibles</p>`;
     }
   </script>
 </body>
