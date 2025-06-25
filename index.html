@@ -175,6 +175,7 @@
     <div id="resumenDemanda">
       <h5>Resumen de Demanda:</h5>
       <ul id="listaDemanda"></ul>
+      <div id="colectivosNecesarios" style="margin-top:10px;"></div>
     </div>
     <div class="text-center">
       <button onclick="optimizarFrecuencia()">Calcular Frecuencias</button>
@@ -284,6 +285,16 @@
       // Actualizar gráfico
       freqChart.data.datasets[0].data = x;
       freqChart.update();
+
+      // Mostrar resumen de colectivos necesarios por tramo
+      const colectivosDiv = document.getElementById('colectivosNecesarios');
+      let html = '<h6>Colectivos necesarios por tramo:</h6><ul style="padding-left:18px">';
+      x.forEach((colectivos, i) => {
+        html += `<li><strong>${conexiones[i].name}:</strong> ${colectivos} colectivos/hora</li>`;
+      });
+      html += '</ul>';
+      html += `<div style="margin-top:6px"><strong>Total colectivos/hora requeridos:</strong> ${x.reduce((a,b)=>a+b,0)}</div>`;
+      colectivosDiv.innerHTML = html;
     }
   </script>
 </body>
